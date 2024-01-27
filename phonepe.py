@@ -172,7 +172,7 @@ df_agg_user['State'] = df_agg_user['State'].replace(dict(zip(Agg_user_state_list
 Path_3 = "C:/Users/susmi/pulse/data/map/transaction/hover/country/india/state/"
 map_tra_state_list = os.listdir(Path_3)
 
-Map_tra = {'State': [], 'Year': [], 'Quarter': [], 'District': [], 'Transaction_Count': [], 'Transaction_Amount': []}
+Map_tra = {'State': [], 'Year': [], 'Quarter': [], 'District': [], 'Transaction_count': [], 'Transaction_amount': []}
 
 for i in map_tra_state_list:
     p_i = Path_3 + i + "/"
@@ -195,8 +195,8 @@ for i in map_tra_state_list:
                 Map_tra['Year'].append(j)
                 Map_tra['Quarter'].append(int(k.strip('.json')))
                 Map_tra["District"].append(District)
-                Map_tra["Transaction_Count"].append(count)
-                Map_tra["Transaction_Amount"].append(amount)
+                Map_tra["Transaction_count"].append(count)
+                Map_tra["Transaction_amount"].append(amount)
                 
 df_map_trans = pd.DataFrame(Map_tra)
 custom_state_list = ['Andaman & Nicobar',
@@ -243,7 +243,7 @@ df_map_trans['State'] = df_map_trans['State'].replace(dict(zip(map_tra_state_lis
 Path_4 = "C:/Users/susmi/pulse/data/map/user/hover/country/india/state/"
 map_user_state_list = os.listdir(Path_4)
 
-Map_user = {"State": [], "Year": [], "Quarter": [], "District": [], "Registered_User": []}
+Map_user = {"State": [], "Year": [], "Quarter": [], "District": [], "Registered_User": [],"App_opens":[]}
 
 for i in map_user_state_list:
     p_i = Path_4 + i + "/"
@@ -258,14 +258,16 @@ for i in map_user_state_list:
             Data = open(p_k, 'r')
             D = json.load(Data)
 
-            for l in D["data"]["hoverData"].items():
-                district = l[0]
-                registereduser = l[1]["registeredUsers"]
-                Map_user['State'].append(i)
-                Map_user['Year'].append(j)
-                Map_user['Quarter'].append(int(k.strip('.json')))
-                Map_user["District"].append(district)
-                Map_user["Registered_User"].append(registereduser)
+            for z_key, z_value in D['data']['hoverData'].items():
+                            district = z_key.split(' district')[0]
+                            reg_user = z_value['registeredUsers']
+                            app_opens = z_value['appOpens']
+                            Map_user['State'].append(i)
+                            Map_user['Year'].append(j)
+                            Map_user['Quarter'].append(k[0])
+                            Map_user['District'].append(district)
+                            Map_user['Registered_User'].append(reg_user)
+                            Map_user['App_opens'].append(app_opens)
                 
 df_map_user = pd.DataFrame(Map_user)
 custom_state_list = ['Andaman & Nicobar',
@@ -526,8 +528,8 @@ def Map_trans_tab():
                                                               Year INT,
                                                               Quarter INT,
                                                               District VARCHAR(100),
-                                                              Transaction_Count BIGINT,
-                                                              Transaction_Amount FLOAT)''')
+                                                              Transaction_count BIGINT,
+                                                              Transaction_amount FLOAT)''')
 
     
     for index,row in df_map_trans.iterrows():
@@ -535,15 +537,15 @@ def Map_trans_tab():
                                                    Year,
                                                    Quarter,
                                                    District,
-                                                   Transaction_Count,
-                                                   Transaction_Amount
+                                                   Transaction_count,
+                                                   Transaction_amount
                                                    )values(%s,%s,%s,%s,%s,%s)'''
             values=(row['State'],
                     row['Year'],
                     row['Quarter'],
                     row['District'],
-                    row['Transaction_Count'],
-                    row['Transaction_Amount'])
+                    row['Transaction_count'],
+                    row['Transaction_amount'])
             mycursor.execute(insert_query,values)
     mydb.commit()
 
@@ -556,7 +558,8 @@ def Map_user_tab():
                                                               Year INT,
                                                               Quarter INT,
                                                               District VARCHAR(100),
-                                                              Registered_User INT)''')
+                                                              Registered_User INT,
+                                                              App_opens BIGINT)''')
 
 
     for index,row in df_map_user.iterrows():
@@ -564,12 +567,14 @@ def Map_user_tab():
                                                    Year,
                                                    Quarter,
                                                    District,
-                                                   Registered_User)values(%s,%s,%s,%s,%s)'''
+                                                   Registered_User,
+                                                   App_opens)values(%s,%s,%s,%s,%s,%s)'''
             values=(row['State'],
                     row['Year'],
                     row['Quarter'],
                     row['District'],
-                    row['Registered_User'])
+                    row['Registered_User'],
+                    row['App_opens'])
             mycursor.execute(insert_query,values)
     mydb.commit()
 
@@ -660,6 +665,11 @@ def get_transaction_type():
     data = [i[0] for i in data]
     return data
 
+def get_agg_users():
+    mycursor.execute("SELECT * FROM phone_pe.agg_user;")
+    data = mycursor.fetchall()
+    d = pd.DataFrame(data, columns=mycursor.column_names)
+    return d
 
 def agg_trans_avg(agg_trans):
     data = []
@@ -679,7 +689,20 @@ def get_map_transaction():
     d = pd.DataFrame(data, columns=mycursor.column_names)
     return d
 
+def get_map_users():
+    mycursor.execute("SELECT * FROM phone_pe.map_user;")
+    data = mycursor.fetchall()
+    d = pd.DataFrame(data, columns=mycursor.column_names)
+    return d
 
+
+
+def users_trans_avg(agg_trans):
+    data = []
+    for i in range(0, len(agg_trans)):
+        avg = agg_trans.iloc[i]["App_opens"] / agg_trans.iloc[i]["Registered_User"]
+        data.append(avg)
+    return data
 
 #streamlit
 
@@ -694,9 +717,10 @@ st.title(":violet[Phonepe Pulse Data Visualization]")
 
 with st.sidebar:
     st.header(":wave: :violet[**Hello! Welcome to the dashboard**]")
+    india=Image.open("india.png")
     selected = option_menu(None,
-                            options=["Home","Transactions-Insights","Users-Insights"],
-                            icons=["house", "cash-coin", "bi-people"],
+                            options=["Home","INDIA","Transactions-Insights","Users-Insights"],
+                            icons=["house","india", "cash-coin", "bi-people"],
                             default_index=0,
                             orientation="horizontal",
                             styles={"container": {"width": "90%"},
@@ -722,10 +746,65 @@ if selected == "Home":
     st.write("****✳Money Storage****")
     st.write("****✳PIN Authorization****")
     st.download_button("DOWNLOAD THE APP NOW", "https://www.phonepe.com/app-download/")
+    
+    
+    
+    
+if selected == "INDIA":
+    MAP= st.selectbox("select your MAP",("Click to select","Total_transactions","Registered Users","App_opens"))
+    def get_aggregated_user():
+            mycursor.execute( "SELECT * FROM phone_pe.agg_trans;")
+            data = mycursor.fetchall()
+            df = pd.DataFrame(data, columns=mycursor.column_names)
+            return df
+        
+    
+    
+    if MAP=='Total_transactions':
+        total_trans=get_aggregated_user()
+        total_trans=total_trans.groupby(["State"])[["Transaction_count"]].sum().reset_index()
+        fig = px.choropleth(total_trans,
+                            geojson="https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/e388c4cae20aa53cb5090210a42ebb9b765c0a36/india_states.geojson",
+                            featureidkey='properties.ST_NM',
+                            locations='State',
+                            color='Transaction_count',
+                            color_continuous_scale="Viridis",
+                            title="Transactions state wise",
+                                    height=1000, width=1200)
+        fig.update_geos(fitbounds='locations', visible=False)
+        st.write(fig)        
+    
+    if MAP =="Registered Users":
+        tot_user = get_map_users()
+        tot_user = tot_user.groupby(["State"])[["Registered_User", "App_opens"]].sum().reset_index()
+        data =state_list()
+        fig = px.choropleth(tot_user,
+                            geojson="https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/e388c4cae20aa53cb5090210a42ebb9b765c0a36/india_states.geojson",
+                            featureidkey='properties.ST_NM',
+                            locations='State',
+                            color='Registered_User',
+                            color_continuous_scale="Reds",
+                            title="Registered Users state wise",
+                                    height=1000, width=1200)
+        fig.update_geos(fitbounds='locations', visible=False)
+        st.write(fig)
+    if MAP=='App_opens':
+        tot_user = get_map_users()
+        tot_user = tot_user.groupby(["State"])[["Registered_User", "App_opens"]].sum().reset_index()
+        fig = px.choropleth(tot_user,
+                            geojson="https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/e388c4cae20aa53cb5090210a42ebb9b765c0a36/india_states.geojson",
+                            featureidkey='properties.ST_NM',
+                            locations='State',
+                            color='App_opens',
+                            color_continuous_scale="Greens",
+                            title="App opens state wise",
+                                    height=1000, width=1200)
+        fig.update_geos(fitbounds='locations', visible=False)
+        st.write(fig)        
+        
 
 if selected == "Transactions-Insights":
-    with st.container():
-        # showing quarter wise financial type wise year wise transaction for states
+    with st.container():       
         st.markdown(":black[TRANSACTIONS INSIGHTS]")
         col1, col2, col3 = st.columns(3)
         # select box
@@ -740,16 +819,32 @@ if selected == "Transactions-Insights":
                                    options=quarter_list(), index=0)
    
         def get_aggregated_user():
-            mycursor.execute(
-                "SELECT * FROM phone_pe.agg_trans;")
+            mycursor.execute( "SELECT * FROM phone_pe.agg_trans;")
             data = mycursor.fetchall()
             df = pd.DataFrame(data, columns=mycursor.column_names)
             return df
+        
+        
         df_agg_tran = get_aggregated_user()
         avg_value = agg_trans_avg(df_agg_tran)
         avg_value = pd.DataFrame(avg_value, columns=["avg_value"])
         df_av = pd.concat([df_agg_tran, avg_value], axis=1)
         v = df_av[(df_av["Year"] == year) & (df_av["Quarter"] == quarter)& (df_av["State"] == state)]
+        total_transactions = v["Transaction_count"].sum()
+        total_transaction_amount =v["Transaction_amount"].sum()
+        total_avg=v["avg_value"].sum()
+        
+        col1,col2,col3=st.columns(3)
+        with col1:
+            st.markdown(":black[All PhonePe transactions (UPI + Cards + Wallets)]")
+            st.write(total_transactions)
+        with col2:
+            st.markdown(":black[Total payment value]")
+            st.write( total_transaction_amount)
+        with col3:
+            st.markdown(":black[Avg. transaction value]")
+            st.write(total_avg)
+                     
         plt.figure(figsize=(12, 5))
         fig = px.pie(v, values='Transaction_amount', names='Transaction_type', title='Pie Chart for Transaction Types',
             hover_data=['Transaction_count', 'avg_value'])
@@ -760,22 +855,135 @@ if selected == "Transactions-Insights":
         new_v = new_frame(v)
         st.table(new_v)
 
-if selected == "Users-Insights":
+        col1, col2 = st.columns(2)
+    
+        with col1:
+            year_df = st.selectbox(label="Select year", options=(2018, 2019, 2020, 2021, 2022, 2023), index=0)
 
+        with col2:
+            transaction_type = st.selectbox(label="Select the transaction type", options=get_transaction_type(), index=0)
+        
+        df_agg_total = get_aggregated_user()
+        df_agg_total = df_agg_total.groupby(["State", "Year", "Transaction_type"])[["Transaction_count", "Transaction_amount"]].sum().reset_index()
+        q = df_agg_total[(df_agg_total["Year"] == year_df) & (df_agg_total["Transaction_type"] == transaction_type)]
+
+        fig = px.bar(q, x='State', y='Transaction_count',hover_data=['State', 'Transaction_count'], height=500, title="Transaction count state wise")
+        st.write(fig)
+                
+        df_agg_total = get_aggregated_user()
+        df_agg_total = df_agg_total.groupby(["State", "Year", "Transaction_type"])[["Transaction_count", "Transaction_amount"]].sum().reset_index()
+        q = df_agg_total[(df_agg_total["Year"] == year_df) & (df_agg_total["Transaction_type"] == transaction_type)]
+
+        fig = px.bar(q, x='State', y='Transaction_amount',hover_data=['State', 'Transaction_amount'], height=500, title="Transaction Amount state wise")
+        st.write(fig)
+
+        st.markdown("")
+        new_v = new_frame(q)
+        st.table(new_v)   
+        
+        st.markdown("#### Top 10 distircts")
+        year_df_d = st.selectbox(label="Select year for the district wise data", options=(2018, 2019, 2020, 2021, 2022, 2023), index=0)
+         
+        st.markdown("#### Top 10 distircts for Transaction Count wise")
+        df = get_map_transaction()
+        df = df.groupby(["Year", "District"])[["Transaction_count", "Transaction_amount"]].sum().reset_index()
+        k = df[df["Year"] == year_df_d]
+        c = k.sort_values(by=["Transaction_count"],ascending=False).head(10)
+        c = c[["Year", "District", "Transaction_count"]]
+        c_df = new_frame(c)
+        st.table(c_df)
+        
+     
+        st.markdown("#### Top 10 States")
+        year_df_State = st.selectbox(label="Select year for the state wise data", options=(2018, 2019, 2020, 2021, 2022, 2023), index=0)
+
+        st.markdown("#### Top 10 States for Transaction Count wise")
+        df = get_aggregated_user()
+        df = df.groupby(["Year", "State"])[["Transaction_count", "Transaction_amount"]].sum().reset_index()
+        k1 = df[df["Year"] == year_df_State]
+        c1 = k1.sort_values(by=["Transaction_count"],ascending=False).head(10)
+        c1 = c1[["Year","State","Transaction_count"]]
+        c1_df = new_frame(c1)
+        st.table(c1_df)
+         
+        
+       
+
+if selected == "Users-Insights":
+    
+    st.markdown("#### :black[USERS INSIGHTS]")
     col1, col2, col3 = st.columns(3)
     with col1:
-        user_state = st.selectbox(label="Select the state users",
-                                  options=state_list(), index=0)
+        user_state = st.selectbox(label="Select the state users", options=state_list(), index=0)
+        
     with col2:
-        user_year = st.selectbox(label="Select the year users",
-                                 options=year_list(), index=0)
+        user_year = st.selectbox(label="Select the year users",options=year_list(), index=0)
+         
     with col3:
-        user_quarter = st.selectbox(
-             label="Select the Quarter users", options=quarter_list(), index=0)
+        user_quarter = st.selectbox(label="Select the Quarter users", options=quarter_list(), index=0)
+           
+    
+    user_df = get_agg_users()
+    user = user_df[(user_df["State"] == user_state) & (user_df["Year"] == user_year) & (user_df["Quarter"] == user_quarter)]
+    User_Count=user["User_Count"].sum()
+    User_Percentage=user["User_Percentage"].sum()
+    
+    col1,col2=st.columns(2)
+    with col1:
+        st.markdown("User Count")
+        st.write(User_Count)
+    with col2:
+        st.markdown("User Percentage")
+        st.write(User_Percentage)
+    
+    pie_fig = px.pie(user, names="Brands", values="User_Count",title="Pie Chart for Users Brands")
+    st.write(pie_fig)
+    6g    
+    c_df = new_frame(user)
+    st.table(c_df)
+   
+    tot_state = st.selectbox(label="Select a state",options=state_list(), index=10)
+    tot_user = get_map_users()
+    tot_user = tot_user.groupby(["State", "Year",])[ ["Registered_User", "App_opens"]].sum().reset_index()
+    to = tot_user[tot_user["State"] == tot_state][1:]
+    
+    col1, col2 = st.columns(2)
 
+    with col1:    
+        fig = px.bar(to, x='Year', y='Registered_User', width=500, color="Year",title="Year wise Registered Users")
+        st.write(fig)
 
+    with col2:
 
+        fig = px.bar(to, x='Year', y='App_opens', width=500, color="Year", title="Year wise App opens")
+        st.write(fig)
 
+    st.markdown("")
+    st.markdown("")
+    to_df = new_frame(to)
+    st.table(to_df)
 
-
-
+    st.markdown("#### Top 10 distircts")
+    year_df_d = st.selectbox(label="Select year for the district wise data", options=(2018, 2019, 2020, 2021, 2022, 2023), index=0)
+        
+    st.markdown("#### Top 10 distircts for Registered_User")
+    df = get_map_users()
+    df = df.groupby(["Year", "District"])[["Registered_User", "App_opens"]].sum().reset_index()
+    k = df[df["Year"] == year_df_d]
+    c = k.sort_values(by=["Registered_User"],ascending=False).head(10)
+    c = c[["Year", "District", "Registered_User"]]
+    c_df = new_frame(c)
+    st.table(c_df)
+    
+    
+    
+    
+    
+   
+    
+    
+    
+    
+    
+    
+    
