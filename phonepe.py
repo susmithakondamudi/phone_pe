@@ -14,13 +14,13 @@ import PIL
 from PIL import Image
 import git
 
-def git_connect():
-    try:
-        git.Repo.clone_from( 'https://github.com/PhonePe/pulse.git', 'pulse')
-    except:
-        pass
+# def git_connect():
+#     try:
+#         git.Repo.clone_from( 'https://github.com/PhonePe/pulse.git', 'pulse')
+#     except:
+#         pass
 
-git_connect()
+# git_connect()
 
 
 
@@ -892,6 +892,18 @@ if selected == "Transactions-Insights":
         c = c[["Year", "District", "Transaction_count"]]
         c_df = new_frame(c)
         st.table(c_df)
+
+
+        st.markdown("#### Top 10 postalcodes")
+        year_df_pc = st.selectbox(label="Select year for the postal code data", options=(2018, 2019, 2020, 2021, 2022, 2023), index=0)
+        st.markdown("#### Top 10 postalcodes for Transaction Count wise")
+        df = get_top_trans()
+        df = df.groupby(["Year", "District_Pincode"])[["Transaction_count", "Transaction_amount"]].sum().reset_index()
+        k = df[df["Year"] == year_df_pc]
+        c = k.sort_values(by=["Transaction_count"],ascending=False).head(10)
+        c = c[["Year", "District_Pincode", "Transaction_count"]]
+        c_df = new_frame(c)
+        st.table(c_df) 
         
      
         st.markdown("#### Top 10 States")
