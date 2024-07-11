@@ -1,8 +1,8 @@
-Phone-pe-pulse-data extraction and data analysis using visulization tools
+#Phone-pe-pulse-data visualization
 
-problem statement:
+#problem statement:
 
-The Phonepe pulse Github repository contains a large amount of data related to various metrics and statistics. The goal is to extract this data and process it to obtain insights and information that can be visualized in a user-friendly manner.
+#The Phonepe pulse Github repository contains a large amount of data related to various metrics and statistics. The goal is to extract this data and process it to obtain insights and information that can be visualized in a user-friendly manner.
 
 1.Extract data from the Phonepe pulse Github repository through scripting and clone it.
 
@@ -16,7 +16,7 @@ The Phonepe pulse Github repository contains a large amount of data related to v
 
 6.Provide at least 10 different dropdown options for users to select different facts and figures to display on the dashboard.
 
-Approach:
+#Approach:
 
 1.Data extraction: Clone the Github using scripting to fetch the data from the Phonepe pulse Github repository and store it in a suitable format such as CSV or JSON.
 
